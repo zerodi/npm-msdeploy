@@ -72,7 +72,7 @@ function getExePath() {
         throw new Error("This script is only available on Windows environment.");
     }
 
-    const relativeMsDeployPath = "IIS/Microsoft Web Deploy V3/msdeploy.js.exe";
+    const relativeMsDeployPath = "IIS/Microsoft Web Deploy V3/msdeploy.exe";
     const path64 = path.join(process.env.ProgramFiles, relativeMsDeployPath);
     const path32 = path.join(process.env["ProgramFiles(x86)"], relativeMsDeployPath);
     let msDeploy64Path, msDeploy32Path;
@@ -91,7 +91,7 @@ function getExePath() {
         }
     }
 
-    throw new Error(`MSDeploy doesn't seem to be installed. Could not find msdeploy.js in "${msDeploy64Path}" or "${msDeploy32Path}". You can install it from http://www.iis.net/downloads/microsoft/web-deploy`);
+    throw new Error(`MSDeploy doesn't seem to be installed. Could not find msdeploy in "${msDeploy64Path}" or "${msDeploy32Path}". You can install it from http://www.iis.net/downloads/microsoft/web-deploy`);
 }
 
 /*
@@ -105,7 +105,7 @@ async function runMSDeploy(params) {
     console.log('stderr:', stderr);
 	if (error) {
 		console.error(`exec error: ${error}`);
-		throw new Error('msdeploy.js.exe error. Incorrect params.');
+		throw new Error('msdeploy.exe error. Incorrect params.');
 	}
 	console.log(`stdout: ${stdout}`);
 }
