@@ -2,8 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
+const exec = require('child_process').exec;
 
 const deployCli = function(args, options) {
     let params = '';
@@ -59,7 +58,7 @@ function processSource(source) {
         return source;
     }
     sourcePath = path.resolve(sourcePath);
-    return `contentPath=${sourcePath}`;
+    return `contentPath="${sourcePath}"`;
 }
 
 /*
@@ -80,14 +79,14 @@ function getExePath() {
     if (path64 != null) {
         msDeploy64Path = path.resolve(path.join(process.env.ProgramFiles, relativeMsDeployPath));
         if (fs.existsSync(msDeploy64Path)) {
-            return msDeploy64Path;
+            return `"${msDeploy64Path}"`;
         }
     }
 
     if (path32 != null) {
         msDeploy32Path = path.resolve(path.join(process.env["ProgramFiles(x86)"], relativeMsDeployPath));
         if (fs.existsSync(msDeploy32Path)) {
-            return msDeploy32Path;
+            return `"${msDeploy32Path}"`;
         }
     }
 
@@ -97,17 +96,22 @@ function getExePath() {
 /*
  * Run MSdeploy with params
 */
-async function runMSDeploy(params) {
-    params = params || '';
-    const msDeployPath = `${getExePath()}`;
-    const { error, stdout, stderr } = await exec(`${msDeployPath} ${params}`);
-    console.log('stdout:', stdout);
-    console.log('stderr:', stderr);
-	if (error) {
-		console.error(`exec error: ${error}`);
-		throw new Error('msdeploy.exe error. Incorrect params.');
-	}
-	console.log(`stdout: ${stdout}`);
+function runMSDeploy(params) {
+    return new Promise(((resolve, reject) => {
+        params = params || '';
+        const msDeployPath = `${getExePath()}`;
+        exec(`${msDeployPath} ${params}`, (error, stdout, stderr) => {
+            console.log('stdout:', stdout);
+            console.log('stderr:', stderr);
+            if (error) {
+                console.error(`exec error: ${error}`);
+                reject(error);
+                throw new Error('msdeploy.exe error. Incorrect params.');
+            } else {
+                resolve();
+            }
+        });
+    }))
 }
 
 module.exports.deployCli = deployCli;
