@@ -2,44 +2,64 @@
 
 const path = require('path');
 const fs = require('fs');
-const spawn = require('child_process').spawn;
-const exec = require('child_process').exec;
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
-var deploy = function (args, options) {
+const deployCli = function(args, options) {
+    let params = '';
+    let index = 0;
 
-	var params = '',
-		index = 0;
+    for (const value in options) {
+        if (options.hasOwnProperty(value)) {
+            // Check if the option passed from user
+            const key = options[value];
+            if (key === true) {
+                let argValue = args[index];
+                if ("source" === value) {
+                    argValue = processSource(argValue);
+                }
+                let param = `-${value}:${argValue}`;
+                params += ` ${param}`;
+                index++;
+            }
+        }
+    }
 
-	for (var value in options) {
-		// Check if the option passed from user
-		var key = options[value];
-		if (key === true) {
-			var argValue = args[index];
-			if ("source" === value) {
-				argValue = processSource(argValue);
-			}
-			var param = "-" + value + ":" + argValue;
-			params = params + ' ' + param;
-			index++;
-		}
-	}
+    return runMSDeploy(params);
+};
 
-	runMSDeploy(params);
+const deploy = function(options) {
+    let params = '';
+    let index = 0;
+
+    for (const key in options) {
+        if (options.hasOwnProperty(key)) {
+            // Check if the option passed from user
+            let argValue = options[key];
+            if ("source" === key) {
+                argValue = processSource(argValue);
+            }
+            let param = `-${key}:${argValue}`;
+            params += ` ${param}`;
+            index++;
+        }
+    }
+    return runMSDeploy(params);
 };
 
 /**
  * Provide better source behaviour. Let MSDeploy work with relative content paths!
  */
 function processSource(source) {
-	if (typeof (source) === "undefined" || source.indexOf("contentPath=") !== 0) {
-		return source;
-	}
-	var sourcePath = source.replace("contentPath=", "");
-	if (path.isAbsolute(sourcePath)) {
-		return source;
-	}
-	sourcePath = path.resolve(sourcePath);
-	return "contentPath=" + sourcePath;
+    if (typeof (source) === "undefined" || source.indexOf("contentPath=") !== 0) {
+        return source;
+    }
+    let sourcePath = source.replace("contentPath=", "");
+    if (path.isAbsolute(sourcePath)) {
+        return source;
+    }
+    sourcePath = path.resolve(sourcePath);
+    return `contentPath=${sourcePath}`;
 }
 
 /*
@@ -48,50 +68,47 @@ function processSource(source) {
  * https://github.com/mrjackdavis/grunt-msdeploy/blob/master/tasks/msdeploy.js
 */
 function getExePath() {
+    if (!process.env.ProgramFiles || !process.env["ProgramFiles(x86)"]) {
+        throw new Error("This script is only available on Windows environment.");
+    }
 
-	if (!process.env.ProgramFiles || !process.env["ProgramFiles(x86)"]) {
-		throw new Error("This script is only available on Windows environment.");
-	}
+    const relativeMsDeployPath = "IIS/Microsoft Web Deploy V3/msdeploy.js.exe";
+    const path64 = path.join(process.env.ProgramFiles, relativeMsDeployPath);
+    const path32 = path.join(process.env["ProgramFiles(x86)"], relativeMsDeployPath);
+    let msDeploy64Path, msDeploy32Path;
 
-	var relativeMsDeployPath = "IIS/Microsoft Web Deploy V3/msdeploy.exe",
-		path64 = path.join(process.env.ProgramFiles, relativeMsDeployPath),
-		path32 = path.join(process.env["ProgramFiles(x86)"], relativeMsDeployPath),
-		msDeploy64Path, msDeploy32Path;
+    if (path64 != null) {
+        msDeploy64Path = path.resolve(path.join(process.env.ProgramFiles, relativeMsDeployPath));
+        if (fs.existsSync(msDeploy64Path)) {
+            return msDeploy64Path;
+        }
+    }
 
-	if (path64 != null) {
-		msDeploy64Path = path.resolve(path.join(process.env.ProgramFiles, relativeMsDeployPath));
-		if (fs.existsSync(msDeploy64Path)) {
-			return msDeploy64Path;
-		}
-	}
+    if (path32 != null) {
+        msDeploy32Path = path.resolve(path.join(process.env["ProgramFiles(x86)"], relativeMsDeployPath));
+        if (fs.existsSync(msDeploy32Path)) {
+            return msDeploy32Path;
+        }
+    }
 
-	if (path32 != null) {
-		msDeploy32Path = path.resolve(path.join(process.env["ProgramFiles(x86)"], relativeMsDeployPath));
-		if (fs.existsSync(msDeploy32Path)) {
-			return msDeploy32Path;
-		}
-	}
-
-	throw new Error("MSDeploy doesn't seem to be installed. Could not find msdeploy in \"" + msDeploy64Path + "\" or \"" + msDeploy32Path + "\". You can install it from http://www.iis.net/downloads/microsoft/web-deploy");
+    throw new Error(`MSDeploy doesn't seem to be installed. Could not find msdeploy.js in "${msDeploy64Path}" or "${msDeploy32Path}". You can install it from http://www.iis.net/downloads/microsoft/web-deploy`);
 }
-
 
 /*
  * Run MSdeploy with params
 */
-function runMSDeploy(param) {
-
-	param = param || '';
-
-	var msDeployPath = '"' + getExePath() + '"';
-	exec(msDeployPath + ' ' + param, (error, stdout, stderr) => {
-		if (error) {
-			console.error(`exec error: ${error}`);
-			throw new Error('msdeploy.exe error. Incorrect params.');
-		}
-		console.log(`stdout: ${stdout}`);
-	});
+async function runMSDeploy(params) {
+    params = params || '';
+    const msDeployPath = `${getExePath()}`;
+    const { error, stdout, stderr } = await exec(`${msDeployPath} ${params}`);
+    console.log('stdout:', stdout);
+    console.log('stderr:', stderr);
+	if (error) {
+		console.error(`exec error: ${error}`);
+		throw new Error('msdeploy.js.exe error. Incorrect params.');
+	}
+	console.log(`stdout: ${stdout}`);
 }
 
-
-module.exports = deploy;
+module.exports.deployCli = deployCli;
+module.exports.deploy = deploy;

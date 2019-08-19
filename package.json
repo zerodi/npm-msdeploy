@@ -1,10 +1,10 @@
 {
   "name": "msdeploy",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "NPM MSDeploy, deploy using microsoft msdeploy",
   "main": "index.js",
   "bin": {
-    "msdeploy": "./msdeploy"
+    "msdeploy": "msdeploy"
   },
   "repository": {
     "type": "git",
@@ -16,10 +16,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "glob": "^7.1.4",
-    "ltcdr": "^2.2.1"
+    "commander": "^3.0.0",
+    "glob": "^7.1.4"
   },
   "engines": {
-    "node": ">=6"
+    "node": ">=10"
   }
 }
