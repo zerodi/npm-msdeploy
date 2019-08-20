@@ -100,11 +100,12 @@ function runMSDeploy(params) {
     return new Promise(((resolve, reject) => {
         params = params || '';
         const msDeployPath = `${getExePath()}`;
-        exec(`${msDeployPath} ${params}`, (error, stdout, stderr) => {
-            console.log('stdout:', stdout);
-            console.log('stderr:', stderr);
+        exec(`chcp 65001 | ${msDeployPath} ${params}`, {}, (error, stdout) => {
+            if (stdout) {
+                console.log(stdout);
+            }
             if (error) {
-                console.error(`exec error: ${error}`);
+                console.error(error);
                 reject(error);
                 throw new Error('msdeploy.exe error. Incorrect params.');
             } else {
